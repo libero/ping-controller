@@ -12,8 +12,11 @@ use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 use function call_user_func;
+use function in_array;
 use function restore_error_handler;
 use function set_error_handler;
+use const E_DEPRECATED;
+use const E_USER_DEPRECATED;
 
 final class PingController
 {
@@ -31,6 +34,12 @@ final class PingController
         if ($this->test) {
             set_error_handler(
                 function (int $severity, string $message, string $file, int $line) : bool {
+                    if (in_array($severity, [E_DEPRECATED, E_USER_DEPRECATED], true)) {
+                        $this->logger->log(LogLevel::NOTICE, $message);
+
+                        return true;
+                    }
+
                     throw new ErrorException($message, 0, $severity, $file, $line);
                 }
             );

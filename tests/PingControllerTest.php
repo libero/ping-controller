@@ -15,6 +15,7 @@ use Symfony\Component\Debug\BufferingLogger;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 use function trigger_error;
+use const E_USER_DEPRECATED;
 use const E_USER_NOTICE;
 
 final class PingControllerTest extends TestCase
@@ -42,7 +43,7 @@ final class PingControllerTest extends TestCase
     {
         $logger = new BufferingLogger();
         $count = 0;
-        $check = function () use (&$count) {
+        $check = function () use (&$count) : void {
             $count++;
         };
 
@@ -213,6 +214,31 @@ final class PingControllerTest extends TestCase
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
         $this->assertSame('0', $response->headers->get('Expires'));
         $this->assertEquals([[LogLevel::ALERT, 'Ping failed', ['exception' => $expected]]], $logger->cleanLogs());
+    }
+
+    /**
+     * @test
+     */
+    public function it_ignores_deprecations() : void
+    {
+        $logger = new BufferingLogger();
+
+        $controller = new PingController(
+            function () : void {
+                trigger_error('foo', E_USER_DEPRECATED);
+                trigger_error('bar', E_USER_DEPRECATED);
+            },
+            $logger
+        );
+
+        $response = $controller();
+
+        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertSame('pong', $response->getContent());
+        $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
+        $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
+        $this->assertSame('0', $response->headers->get('Expires'));
+        $this->assertSame([[LogLevel::NOTICE, 'foo', []], [LogLevel::NOTICE, 'bar', []]], $logger->cleanLogs());
     }
 
     private function willTrigger(ErrorException $error) : callable
