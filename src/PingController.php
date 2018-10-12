@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Libero\PingController;
 
+use ErrorException;
 use Exception;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
@@ -11,6 +12,8 @@ use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 use function call_user_func;
+use function restore_error_handler;
+use function set_error_handler;
 
 final class PingController
 {
@@ -26,6 +29,12 @@ final class PingController
     public function __invoke() : Response
     {
         if ($this->test) {
+            set_error_handler(
+                function (int $severity, string $message, string $file, int $line) : bool {
+                    throw new ErrorException($message, 0, $severity, $file, $line);
+                }
+            );
+
             try {
                 call_user_func($this->test);
             } catch (RuntimeException $e) {
@@ -44,6 +53,8 @@ final class PingController
                 }
 
                 return $this->createResponse(Response::HTTP_INTERNAL_SERVER_ERROR);
+            } finally {
+                restore_error_handler();
             }
         }
 

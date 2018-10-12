@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace tests\Libero\PingController;
 
 use Error;
+use ErrorException;
 use Exception;
 use Libero\PingController\PingController;
 use PHPUnit\Framework\TestCase;
@@ -13,6 +14,8 @@ use RuntimeException;
 use Symfony\Component\Debug\BufferingLogger;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
+use function trigger_error;
+use const E_USER_NOTICE;
 
 final class PingControllerTest extends TestCase
 {
@@ -137,7 +140,7 @@ final class PingControllerTest extends TestCase
     /**
      * @test
      */
-    public function it_fails_when_there_is_an_error() : void
+    public function it_fails_when_there_is_a_throwable() : void
     {
         $error = new Error('Problem');
 
@@ -155,7 +158,7 @@ final class PingControllerTest extends TestCase
     /**
      * @test
      */
-    public function it_logs_an_error() : void
+    public function it_logs_a_throwable() : void
     {
         $error = new Error('Problem');
 
@@ -173,9 +176,55 @@ final class PingControllerTest extends TestCase
         $this->assertSame([[LogLevel::EMERGENCY, 'Ping failed', ['exception' => $error]]], $logger->cleanLogs());
     }
 
+    /**
+     * @test
+     */
+    public function it_fails_when_there_is_an_error() : void
+    {
+        $expected = new ErrorException('Problem', 0, E_USER_NOTICE);
+
+        $controller = new PingController($this->willTrigger($expected));
+
+        $response = $controller();
+
+        $this->assertSame(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
+        $this->assertSame('Internal Server Error', $response->getContent());
+        $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
+        $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
+        $this->assertSame('0', $response->headers->get('Expires'));
+    }
+
+    /**
+     * @test
+     */
+    public function it_logs_an_error() : void
+    {
+        $expected = new ErrorException('Problem', 0, E_USER_NOTICE);
+
+        $logger = new BufferingLogger();
+
+        $controller = new PingController($this->willTrigger($expected), $logger);
+
+        $response = $controller();
+
+        $this->assertSame(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
+        $this->assertSame('Internal Server Error', $response->getContent());
+        $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
+        $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
+        $this->assertSame('0', $response->headers->get('Expires'));
+        $this->assertEquals([[LogLevel::ALERT, 'Ping failed', ['exception' => $expected]]], $logger->cleanLogs());
+    }
+
+    private function willTrigger(ErrorException $error) : callable
+    {
+        return function () use ($error) : void {
+            trigger_error($error->getMessage(), $error->getSeverity());
+        };
+    }
+
     private function willThrow(Throwable $throwable) : callable
     {
-        return function () use ($throwable) {
+        return function () use ($throwable) : void {
             throw $throwable;
         };
     }
