@@ -1,0 +1,62 @@
+sudo: false
+
+language: php
+
+php:
+    - 7.2
+    - nightly
+
+before_install:
+    - phpenv config-rm xdebug.ini || true
+    - if [ "$SYMFONY_VERSION" != "" ]; then composer require --dev --no-update symfony/symfony=${SYMFONY_VERSION}; fi
+
+install:
+    - travis_retry composer install --classmap-authoritative --no-suggest --prefer-dist
+
+script:
+    - vendor/bin/phpunit
+
+jobs:
+    include:
+
+        - stage: Test
+          env: SYMFONY_VERSION='4.0.*'
+          php: 7.2
+
+        - stage: Test
+          env: SYMFONY_VERSION='3.4.*'
+          php: 7.2
+
+        - stage: Test
+          env: DEPENDENCIES=low
+          php: 7.2
+          install:
+              - travis_retry composer update --classmap-authoritative --no-suggest  --prefer-dist --prefer-lowest --prefer-stable
+
+        - stage: Code Quality
+          env: CODING_STANDARDS
+          script:
+              - vendor/bin/phpcs -p
+
+        - stage: Code Quality
+          env: STATIC_ANALYSIS
+          script:
+              - vendor/bin/phpstan analyse
+
+stages:
+    - Test
+    - name: Code Quality
+      if: type = pull_request
+
+allow_failures:
+    - php: nightly
+
+cache:
+    directories:
+        - $HOME/.composer/cache/files
+
+if: |
+    branch = master OR \
+    branch =~ /^(?:[0-9]|[1-9][0-9]*)\.(?:[0-9]|[1-9][0-9]*)$/ OR \
+    tag IS present OR \
+    type = pull_request
