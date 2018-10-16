@@ -10,6 +10,7 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Psr\Log\NullLogger;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 use function call_user_func;
@@ -30,7 +31,7 @@ final class PingController
         $this->logger = $logger;
     }
 
-    public function __invoke() : Response
+    public function __invoke(Request $request) : Response
     {
         if ($this->test) {
             $this->ensureLogger();
@@ -52,7 +53,7 @@ final class PingController
             } catch (RuntimeException $e) {
                 $this->logger->critical('Ping failed', ['exception' => $e]);
 
-                return $this->createResponse(Response::HTTP_SERVICE_UNAVAILABLE);
+                return $this->createResponse($request, Response::HTTP_SERVICE_UNAVAILABLE);
             } catch (Throwable $e) {
                 $this->logger->log(
                     $e instanceof Exception ? LogLevel::ALERT : LogLevel::EMERGENCY,
@@ -60,26 +61,31 @@ final class PingController
                     ['exception' => $e]
                 );
 
-                return $this->createResponse(Response::HTTP_INTERNAL_SERVER_ERROR);
+                return $this->createResponse($request, Response::HTTP_INTERNAL_SERVER_ERROR);
             } finally {
                 restore_error_handler();
             }
         }
 
-        return $this->createResponse(Response::HTTP_OK, 'pong');
+        return $this->createResponse($request, Response::HTTP_OK, 'pong');
     }
 
-    private function createResponse(int $statusCode, ?string $content = null) : Response
+    private function createResponse(Request $request, int $statusCode, ?string $content = null) : Response
     {
-        return new Response(
+        $response = new Response(
             $content ?? Response::$statusTexts[$statusCode],
             $statusCode,
             [
                 'Cache-Control' => 'must-revalidate, no-store',
                 'Content-Type' => 'text/plain; charset=utf-8',
-                'Expires' => '0',
             ]
         );
+
+        if ('HTTP/1.0' === $request->getProtocolVersion()) {
+            $response->headers->set('Expires', '0');
+        }
+
+        return $response;
     }
 
     private function ensureLogger() : void

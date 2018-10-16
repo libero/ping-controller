@@ -12,6 +12,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
 use RuntimeException;
 use Symfony\Component\Debug\BufferingLogger;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 use function trigger_error;
@@ -27,7 +28,26 @@ final class PingControllerTest extends TestCase
     {
         $controller = new PingController();
 
-        $response = $controller();
+        $response = $controller(new Request());
+
+        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertSame('pong', $response->getContent());
+        $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
+        $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
+        $this->assertFalse($response->headers->has('Expires'));
+    }
+
+    /**
+     * @test
+     */
+    public function it_returns_an_expire_header_to_a_http_1_0_request() : void
+    {
+        $controller = new PingController();
+
+        $request = new Request();
+        $request->server->set('SERVER_PROTOCOL', 'HTTP/1.0');
+
+        $response = $controller($request);
 
         $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
         $this->assertSame('pong', $response->getContent());
@@ -49,13 +69,12 @@ final class PingControllerTest extends TestCase
 
         $controller = new PingController($check, $logger);
 
-        $response = $controller();
+        $response = $controller(new Request());
 
         $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
         $this->assertSame('pong', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame('0', $response->headers->get('Expires'));
         $this->assertCount(0, $logger->cleanLogs());
         $this->assertSame(1, $count);
     }
@@ -69,13 +88,12 @@ final class PingControllerTest extends TestCase
 
         $controller = new PingController($this->willThrow($exception));
 
-        $response = $controller();
+        $response = $controller(new Request());
 
         $this->assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $response->getStatusCode());
         $this->assertSame('Service Unavailable', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame('0', $response->headers->get('Expires'));
     }
 
     /**
@@ -89,13 +107,12 @@ final class PingControllerTest extends TestCase
 
         $controller = new PingController($this->willThrow($exception), $logger);
 
-        $response = $controller();
+        $response = $controller(new Request());
 
         $this->assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $response->getStatusCode());
         $this->assertSame('Service Unavailable', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame('0', $response->headers->get('Expires'));
         $this->assertSame([[LogLevel::CRITICAL, 'Ping failed', ['exception' => $exception]]], $logger->cleanLogs());
     }
 
@@ -108,13 +125,12 @@ final class PingControllerTest extends TestCase
 
         $controller = new PingController($this->willThrow($exception));
 
-        $response = $controller();
+        $response = $controller(new Request());
 
         $this->assertSame(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
         $this->assertSame('Internal Server Error', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame('0', $response->headers->get('Expires'));
     }
 
     /**
@@ -128,13 +144,12 @@ final class PingControllerTest extends TestCase
 
         $controller = new PingController($this->willThrow($exception), $logger);
 
-        $response = $controller();
+        $response = $controller(new Request());
 
         $this->assertSame(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
         $this->assertSame('Internal Server Error', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame('0', $response->headers->get('Expires'));
         $this->assertSame([[LogLevel::ALERT, 'Ping failed', ['exception' => $exception]]], $logger->cleanLogs());
     }
 
@@ -147,13 +162,12 @@ final class PingControllerTest extends TestCase
 
         $controller = new PingController($this->willThrow($error));
 
-        $response = $controller();
+        $response = $controller(new Request());
 
         $this->assertSame(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
         $this->assertSame('Internal Server Error', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame('0', $response->headers->get('Expires'));
     }
 
     /**
@@ -167,13 +181,12 @@ final class PingControllerTest extends TestCase
 
         $controller = new PingController($this->willThrow($error), $logger);
 
-        $response = $controller();
+        $response = $controller(new Request());
 
         $this->assertSame(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
         $this->assertSame('Internal Server Error', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame('0', $response->headers->get('Expires'));
         $this->assertSame([[LogLevel::EMERGENCY, 'Ping failed', ['exception' => $error]]], $logger->cleanLogs());
     }
 
@@ -186,13 +199,12 @@ final class PingControllerTest extends TestCase
 
         $controller = new PingController($this->willTrigger($expected));
 
-        $response = $controller();
+        $response = $controller(new Request());
 
         $this->assertSame(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
         $this->assertSame('Internal Server Error', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame('0', $response->headers->get('Expires'));
     }
 
     /**
@@ -206,13 +218,12 @@ final class PingControllerTest extends TestCase
 
         $controller = new PingController($this->willTrigger($expected), $logger);
 
-        $response = $controller();
+        $response = $controller(new Request());
 
         $this->assertSame(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
         $this->assertSame('Internal Server Error', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame('0', $response->headers->get('Expires'));
         $this->assertEquals([[LogLevel::ALERT, 'Ping failed', ['exception' => $expected]]], $logger->cleanLogs());
     }
 
@@ -231,13 +242,12 @@ final class PingControllerTest extends TestCase
             $logger
         );
 
-        $response = $controller();
+        $response = $controller(new Request());
 
         $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
         $this->assertSame('pong', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame('0', $response->headers->get('Expires'));
         $this->assertSame([[LogLevel::NOTICE, 'foo', []], [LogLevel::NOTICE, 'bar', []]], $logger->cleanLogs());
     }
 
