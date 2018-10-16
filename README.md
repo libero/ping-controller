@@ -8,7 +8,7 @@ This library provides a ping controller for a Libero API.
 Getting started
 ---------------
 
-Using [Composer](https://getcomposer.org/) you can add the bundle as a dependency:
+Using [Composer](https://getcomposer.org/) you can add the library as a dependency:
 
 ```
 composer require libero/ping-controller
