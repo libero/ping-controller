@@ -8,6 +8,7 @@ use ErrorException;
 use Exception;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use Psr\Log\NullLogger;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -32,6 +33,8 @@ final class PingController
     public function __invoke() : Response
     {
         if ($this->test) {
+            $this->ensureLogger();
+
             set_error_handler(
                 function (int $severity, string $message, string $file, int $line) : bool {
                     if (in_array($severity, [E_DEPRECATED, E_USER_DEPRECATED], true)) {
@@ -47,19 +50,15 @@ final class PingController
             try {
                 call_user_func($this->test);
             } catch (RuntimeException $e) {
-                if ($this->logger) {
-                    $this->logger->critical('Ping failed', ['exception' => $e]);
-                }
+                $this->logger->critical('Ping failed', ['exception' => $e]);
 
                 return $this->createResponse(Response::HTTP_SERVICE_UNAVAILABLE);
             } catch (Throwable $e) {
-                if ($this->logger) {
-                    $this->logger->log(
-                        $e instanceof Exception ? LogLevel::ALERT : LogLevel::EMERGENCY,
-                        'Ping failed',
-                        ['exception' => $e]
-                    );
-                }
+                $this->logger->log(
+                    $e instanceof Exception ? LogLevel::ALERT : LogLevel::EMERGENCY,
+                    'Ping failed',
+                    ['exception' => $e]
+                );
 
                 return $this->createResponse(Response::HTTP_INTERNAL_SERVER_ERROR);
             } finally {
@@ -81,5 +80,10 @@ final class PingController
                 'Expires' => '0',
             ]
         );
+    }
+
+    private function ensureLogger() : void
+    {
+        $this->logger = $this->logger ?? new NullLogger();
     }
 }
