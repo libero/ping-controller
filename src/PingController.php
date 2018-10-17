@@ -56,7 +56,7 @@ final class PingController
                 return $this->createResponse($request, Response::HTTP_SERVICE_UNAVAILABLE);
             } catch (Throwable $e) {
                 $this->logger->log(
-                    $e instanceof Exception ? LogLevel::ALERT : LogLevel::EMERGENCY,
+                    $e instanceof Exception ? LogLevel::ERROR : LogLevel::CRITICAL,
                     'Ping failed',
                     ['exception' => $e]
                 );

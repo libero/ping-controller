@@ -150,7 +150,7 @@ final class PingControllerTest extends TestCase
         $this->assertSame('Internal Server Error', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame([[LogLevel::ALERT, 'Ping failed', ['exception' => $exception]]], $logger->cleanLogs());
+        $this->assertSame([[LogLevel::ERROR, 'Ping failed', ['exception' => $exception]]], $logger->cleanLogs());
     }
 
     /**
@@ -187,7 +187,7 @@ final class PingControllerTest extends TestCase
         $this->assertSame('Internal Server Error', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertSame([[LogLevel::EMERGENCY, 'Ping failed', ['exception' => $error]]], $logger->cleanLogs());
+        $this->assertSame([[LogLevel::CRITICAL, 'Ping failed', ['exception' => $error]]], $logger->cleanLogs());
     }
 
     /**
@@ -224,7 +224,7 @@ final class PingControllerTest extends TestCase
         $this->assertSame('Internal Server Error', $response->getContent());
         $this->assertSame('must-revalidate, no-store, private', $response->headers->get('Cache-Control'));
         $this->assertSame('text/plain; charset=utf-8', $response->headers->get('Content-Type'));
-        $this->assertEquals([[LogLevel::ALERT, 'Ping failed', ['exception' => $expected]]], $logger->cleanLogs());
+        $this->assertEquals([[LogLevel::ERROR, 'Ping failed', ['exception' => $expected]]], $logger->cleanLogs());
     }
 
     /**
