@@ -8,8 +8,7 @@ php:
     - nightly
 
 before_install:
-    - phpenv config-rm xdebug.ini || true
-    - if [ "$SYMFONY_VERSION" != "" ]; then composer require --dev --no-update symfony/symfony=${SYMFONY_VERSION}; fi
+    - &Xdebug phpenv config-rm xdebug.ini || true
 
 install:
     - travis_retry composer install --classmap-authoritative --no-suggest --prefer-dist
@@ -21,26 +20,32 @@ jobs:
     include:
 
         - stage: Test
-          env: SYMFONY_VERSION='4.0.*'
+          name: Symfony 4.0
+          before_install:
+              - *Xdebug
+              - composer require --dev --no-update symfony/symfony=4.0.*
           php: 7.2
 
         - stage: Test
-          env: SYMFONY_VERSION='3.4.*'
+          name: Symfony 3.4
+          before_install:
+              - *Xdebug
+              - composer require --dev --no-update symfony/symfony=3.4.*
           php: 7.2
 
         - stage: Test
-          env: DEPENDENCIES=low
+          name: Lowest dependency versions
           php: 7.2
           install:
               - travis_retry composer update --classmap-authoritative --no-suggest  --prefer-dist --prefer-lowest --prefer-stable
 
         - stage: Code Quality
-          env: CODING_STANDARDS
+          name: Coding standards
           script:
               - vendor/bin/phpcs -p
 
         - stage: Code Quality
-          env: STATIC_ANALYSIS
+          name: Static analysis
           script:
               - vendor/bin/phpstan analyse
 
