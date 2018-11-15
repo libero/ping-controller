@@ -25,7 +25,7 @@ final class PingController
     private $test;
     private $logger;
 
-    public function __construct(callable $test = null, LoggerInterface $logger = null)
+    public function __construct(?callable $test = null, ?LoggerInterface $logger = null)
     {
         $this->test = $test;
         $this->logger = $logger;
